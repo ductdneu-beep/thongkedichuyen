@@ -23,19 +23,27 @@ st.set_page_config(
 )
 
 # -----------------------------------------------------------------------------
-# CSS TÙY CHỈNH DANH SÁCH THẢ XUỐNG CĂN THẲNG HÀNG & MỜ ICON
+# CSS TỰ ĐỘNG CANH BIỂU TƯỢNG SÁT MÉP PHẢI & LÀM MỜ MÀU XÁM NHẸ
 # -----------------------------------------------------------------------------
 st.markdown("""
 <style>
-/* Tinh chỉnh font chữ và độ mờ thanh lịch cho icon thùng rác */
-div[data-baseweb="select"] span {
+/* Canh chỉnh các mục trong danh sách thả xuống */
+div[data-baseweb="popover"] ul li {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
     font-size: 14px !important;
 }
-div[data-baseweb="popover"] ul li {
-    font-size: 13.5px !important;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-    padding-top: 5px !important;
-    padding-bottom: 5px !important;
+
+/* Thùng rác nhỏ gọn, màu xám nhạt mờ thanh lịch */
+.trash-icon {
+    float: right;
+    opacity: 0.35;
+    font-size: 11px;
+    filter: grayscale(100%);
+    margin-left: 15px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -543,29 +551,15 @@ for g in st.session_state.groups:
                 dropdown_options = raw_veh_list + [ACTION_DEL, ACTION_ADD]
                 cur_index = raw_veh_list.index(cur_val) if cur_val in raw_veh_list else 0
                 
-                # Hàm tính toán độ rộng ký tự thực tế để căn thẳng tắp 1 hàng mép phải
-                def get_char_width(s):
-                    w = 0.0
-                    for c in s:
-                        if c in "ijlIt 1.:'-": w += 0.4
-                        elif c in "wmWMGOQ@D%": w += 1.2
-                        elif ord(c) > 255: w += 1.05
-                        else: w += 0.8
-                    return w
-
-                TARGET_WIDTH = 19.5 # Chuẩn độ rộng của thanh thả xuống
-
+                # Hàm hiển thị: Thêm khoảng cách đệm vừa phải để không làm tràn khung
                 def format_display_veh(v):
                     if v == ACTION_DEL:
                         return "🗑️ [Xóa bớt phương tiện...]"
                     if v == ACTION_ADD:
                         return "➕ [Thêm phương tiện mới...]"
-                    
-                    cur_w = get_char_width(v)
-                    diff = max(1.0, TARGET_WIDTH - cur_w)
-                    # Sử dụng khoảng trắng không ngắt rộng \u3000 để căn đều hàng sát mép phải
-                    num_spaces = max(1, int(diff / 1.05))
-                    return f"{v}{chr(12288) * num_spaces}🗑"
+                    # Đệm khoảng cách vừa vặn để icon 🗑 luôn hiển thị rõ ràng và căn về bên phải
+                    pad_spaces = " " * max(3, 22 - len(v))
+                    return f"{v}{pad_spaces}🗑"
 
                 chosen_selection = st.selectbox(
                     f"Phương tiện {idx_m+1}:",
@@ -778,3 +772,4 @@ else:
         col_c.metric("👥 Chi phí TB/người", f"{int(cost_c / sum(g['people'] for g in st.session_state.groups)):,} VNĐ")
         st.markdown("---")
         display_plan(res_cost, "Tối ưu chi phí", cost_c, dur_c)
+        
