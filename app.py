@@ -678,22 +678,24 @@ def display_plan(results, plan_title, total_cost, max_dur):
     st.dataframe(pd.DataFrame(summary_data), use_container_width=True)
     
     col_w, col_p = st.columns(2)
-    with col_w:
-        docx_file = generate_docx(results, plan_title, destination, total_cost, max_dur)
-        st.download_button(
-            label="📄 Tải Báo Cáo Word (.docx)",
-            data=docx_file,
-            file_name=f"Bao_Cao_Phuong_An_{destination}.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        )
-    with col_p:
-        pdf_file = generate_pdf(results, plan_title, destination, total_cost, max_dur)
-        st.download_button(
-            label="📑 Tải Báo Cáo PDF",
-            data=pdf_file,
-            file_name=f"Bao_Cao_Phuong_An_{destination}.pdf",
-            mime="application/pdf"
-        )
+        with col_w:
+            docx_file = generate_docx(results, plan_title, destination, total_cost, max_dur)
+            st.download_button(
+                label="📄 Tải Báo Cáo Word (.docx)",
+                data=docx_file,
+                file_name=f"Bao_Cao_Phuong_An_{destination}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                key=f"docx_{plan_title}_{destination}"
+            )
+        with col_p:
+            pdf_file = generate_pdf(results, plan_title, destination, total_cost, max_dur)
+            st.download_button(
+                label="📄 Tải Báo Cáo PDF",
+                data=pdf_file,
+                file_name=f"Bao_Cao_Phuong_An_{destination}.pdf",
+                mime="application/pdf",
+                key=f"pdf_{plan_title}_{destination}"
+            )
     
     st.markdown("#### 🗺️ Chi tiết lộ trình hành trình từng đoàn:")
     for r in results:
