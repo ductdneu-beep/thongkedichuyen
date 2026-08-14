@@ -23,32 +23,6 @@ st.set_page_config(
 )
 
 # -----------------------------------------------------------------------------
-# CSS TỰ ĐỘNG CANH BIỂU TƯỢNG SÁT MÉP PHẢI & LÀM MỜ MÀU XÁM NHẸ
-# -----------------------------------------------------------------------------
-st.markdown("""
-<style>
-/* Canh chỉnh các mục trong danh sách thả xuống */
-div[data-baseweb="popover"] ul li {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    padding-top: 6px !important;
-    padding-bottom: 6px !important;
-    font-size: 14px !important;
-}
-
-/* Thùng rác nhỏ gọn, màu xám nhạt mờ thanh lịch */
-.trash-icon {
-    float: right;
-    opacity: 0.35;
-    font-size: 11px;
-    filter: grayscale(100%);
-    margin-left: 15px;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# -----------------------------------------------------------------------------
 # CẤU HÌNH FONT UNICODE CHO PDF (KHÔNG LỖI Ô VUÔNG)
 # -----------------------------------------------------------------------------
 @st.cache_resource
@@ -546,26 +520,15 @@ for g in st.session_state.groups:
                     raw_veh_list.append(cur_val)
                 
                 ACTION_DEL = "🗑️ [Xóa bớt phương tiện khỏi danh mục...]"
-                ACTION_ADD = "➕ [Bổ sung phương tiện mới...]"
+                ACTION_ADD = "➕ [Thêm phương tiện mới...]"
                 
                 dropdown_options = raw_veh_list + [ACTION_DEL, ACTION_ADD]
                 cur_index = raw_veh_list.index(cur_val) if cur_val in raw_veh_list else 0
-                
-                # Hàm hiển thị: Thêm khoảng cách đệm vừa phải để không làm tràn khung
-                def format_display_veh(v):
-                    if v == ACTION_DEL:
-                        return "🗑️ [Xóa bớt phương tiện...]"
-                    if v == ACTION_ADD:
-                        return "➕ [Thêm phương tiện mới...]"
-                    # Đệm khoảng cách vừa vặn để icon 🗑 luôn hiển thị rõ ràng và căn về bên phải
-                    pad_spaces = " " * max(3, 22 - len(v))
-                    return f"{v}{pad_spaces}🗑"
 
                 chosen_selection = st.selectbox(
                     f"Phương tiện {idx_m+1}:",
                     dropdown_options,
                     index=cur_index,
-                    format_func=format_display_veh,
                     key=f"sb_veh_{g_key}_{m_key}"
                 )
                 
