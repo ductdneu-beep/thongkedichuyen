@@ -23,17 +23,19 @@ st.set_page_config(
 )
 
 # -----------------------------------------------------------------------------
-# CSS TÙY CHỈNH MENU THẢ XUỐNG
+# CSS TÙY CHỈNH DANH SÁCH THẢ XUỐNG CĂN THẲNG HÀNG & MỜ ICON
 # -----------------------------------------------------------------------------
 st.markdown("""
 <style>
+/* Tinh chỉnh font chữ và độ mờ thanh lịch cho icon thùng rác */
 div[data-baseweb="select"] span {
-    font-size: 14.5px;
+    font-size: 14px !important;
 }
 div[data-baseweb="popover"] ul li {
-    font-size: 14px;
-    padding-top: 6px;
-    padding-bottom: 6px;
+    font-size: 13.5px !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    padding-top: 5px !important;
+    padding-bottom: 5px !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -541,17 +543,29 @@ for g in st.session_state.groups:
                 dropdown_options = raw_veh_list + [ACTION_DEL, ACTION_ADD]
                 cur_index = raw_veh_list.index(cur_val) if cur_val in raw_veh_list else 0
                 
-                # Hàm căn chỉnh: Dùng khoảng trắng cố định \u3000 để đẩy icon thùng rác ra ngoài cùng bên phải
+                # Hàm tính toán độ rộng ký tự thực tế để căn thẳng tắp 1 hàng mép phải
+                def get_char_width(s):
+                    w = 0.0
+                    for c in s:
+                        if c in "ijlIt 1.:'-": w += 0.4
+                        elif c in "wmWMGOQ@D%": w += 1.2
+                        elif ord(c) > 255: w += 1.05
+                        else: w += 0.8
+                    return w
+
+                TARGET_WIDTH = 19.5 # Chuẩn độ rộng của thanh thả xuống
+
                 def format_display_veh(v):
                     if v == ACTION_DEL:
                         return "🗑️ [Xóa bớt phương tiện...]"
                     if v == ACTION_ADD:
                         return "➕ [Thêm phương tiện mới...]"
                     
-                    # Đệm khoảng cách rộng để đẩy biểu tượng ra mép phải
-                    pad_count = max(1, 14 - len(v))
-                    spacing = "\u3000" * pad_count
-                    return f"{v}{spacing}🗑"
+                    cur_w = get_char_width(v)
+                    diff = max(1.0, TARGET_WIDTH - cur_w)
+                    # Sử dụng khoảng trắng không ngắt rộng \u3000 để căn đều hàng sát mép phải
+                    num_spaces = max(1, int(diff / 1.05))
+                    return f"{v}{chr(12288) * num_spaces}🗑"
 
                 chosen_selection = st.selectbox(
                     f"Phương tiện {idx_m+1}:",
@@ -764,4 +778,3 @@ else:
         col_c.metric("👥 Chi phí TB/người", f"{int(cost_c / sum(g['people'] for g in st.session_state.groups)):,} VNĐ")
         st.markdown("---")
         display_plan(res_cost, "Tối ưu chi phí", cost_c, dur_c)
-        
