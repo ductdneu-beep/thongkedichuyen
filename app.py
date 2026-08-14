@@ -23,7 +23,7 @@ st.set_page_config(
 )
 
 # -----------------------------------------------------------------------------
-# CẤU HÌNH FONT UNICODE CHO PDF (CHỐNG LỖI Ô VUÔNG TRÊN MỌI MÁY CHỦ)
+# CẤU HÌNH FONT UNICODE CHO PDF
 # -----------------------------------------------------------------------------
 @st.cache_resource
 def setup_pdf_fonts():
@@ -108,10 +108,9 @@ def save_saved_db(db):
         st.error(f"Không thể lưu: {e}")
 
 # -----------------------------------------------------------------------------
-# 1. DANH SÁCH PHƯƠNG TIỆN MẶC ĐỊNH & TỌA ĐỘ
+# 1. DANH SÁCH PHƯƠNG TIỆN & TỌA ĐỘ
 # -----------------------------------------------------------------------------
 DEFAULT_ALL_VEHICLES = [
-    # Có mã chuyến đi
     "Máy bay",
     "Tàu hỏa",
     "Phà",
@@ -119,7 +118,6 @@ DEFAULT_ALL_VEHICLES = [
     "Tàu điện ngầm",
     "Xe buýt",
     "Waterbus",
-    # Không có mã chuyến đi
     "Xe du lịch 4 chỗ",
     "Xe du lịch 7 chỗ",
     "Xe du lịch 16 chỗ",
@@ -133,10 +131,6 @@ DEFAULT_ALL_VEHICLES = [
     "Xe điện du lịch",
     "Xe Taxi",
     "Tự túc"
-]
-
-CODE_REQUIRED_VEHICLES = [
-    "Máy bay", "Tàu hỏa", "Phà", "Du thuyền", "Tàu điện ngầm", "Xe buýt", "Waterbus"
 ]
 
 PROVINCES = {
@@ -368,7 +362,7 @@ if "groups" not in st.session_state:
 province_list = sorted(list(PROVINCES.keys()))
 
 # -----------------------------------------------------------------------------
-# 2. THANH BÊN (SIDEBAR): CẤU HÌNH, QUẢN LÝ ĐOÀN & DANH MỤC XE
+# 2. THANH BÊN (SIDEBAR)
 # -----------------------------------------------------------------------------
 with st.sidebar:
     st.header("⚙️ Cấu hình đề bài")
@@ -392,17 +386,16 @@ with st.sidebar:
             st.rerun()
 
     st.markdown("---")
-    # QUẢN LÝ DANH MỤC PHƯƠNG TIỆN (THÊM / XÓA BỚT)
     with st.expander("🚗 Quản lý danh mục phương tiện (Thêm/Xóa)", expanded=False):
-        new_veh = st.text_input("Thêm tên phương tiện mới:", placeholder="VD: Tàu cao tốc 5 sao...")
-        if st.button("➕ Thêm vào danh mục") and new_veh:
+        new_veh = st.text_input("Thêm tên phương tiện mới:", placeholder="VD: Cano cao tốc...")
+        if st.button("➕ Thêm phương tiện") and new_veh:
             if new_veh not in st.session_state.vehicle_library:
                 st.session_state.vehicle_library.append(new_veh)
                 st.success(f"Đã thêm: {new_veh}")
                 st.rerun()
         
-        veh_to_remove = st.selectbox("Chọn phương tiện muốn xóa bớt:", st.session_state.vehicle_library)
-        if st.button("🗑️ Xóa phương tiện này khỏi danh mục"):
+        veh_to_remove = st.selectbox("Xóa bớt phương tiện khỏi danh mục:", st.session_state.vehicle_library)
+        if st.button("🗑️ Xóa phương tiện"):
             st.session_state.vehicle_library.remove(veh_to_remove)
             st.warning(f"Đã xóa: {veh_to_remove}")
             st.rerun()
@@ -479,13 +472,13 @@ with st.sidebar:
         except Exception as e: st.error(f"Lỗi: {e}")
 
 st.title("🗺️ Phương án di chuyển")
-st.caption("Tự động đề xuất phương tiện & cho phép chọn phương tiện qua menu thả xuống, tìm kiếm nhanh, lưu dữ liệu và xuất báo cáo Word / PDF.")
+st.caption("Tự động đề xuất phương tiện & có ô tìm kiếm gợi ý phương tiện trực tiếp, lưu dữ liệu và xuất báo cáo Word / PDF.")
 
 # -----------------------------------------------------------------------------
-# 3. BẢNG GIÁ VỚI MENU THẢ XUỐNG CÓ TÌM KIẾM
+# 3. BẢNG GIÁ VỚI Ô TÌM KIẾM GỢI Ý XE TRỰC TIẾP
 # -----------------------------------------------------------------------------
 st.subheader("📝 Bảng giá")
-st.caption("Bạn có thể gõ tìm kiếm và chọn phương tiện từ danh sách thả xuống, hệ thống sẽ tự nhận diện loại xe cần mã chuyến:")
+st.caption("🔍 Bạn có thể gõ vào ô tìm kiếm (VD: '29', 'giường', 'bay', 'thủy'...) để hệ thống tự động lọc và gợi ý nhanh phương tiện:")
 
 default_keys = ["m1", "m2", "m3", "m4"]
 
@@ -510,7 +503,7 @@ for g in st.session_state.groups:
         st.session_state.override_mode[g_key] = selected_override
         
         st.markdown("---")
-        st.markdown("**1. Chọn phương tiện di chuyển (Thanh thả xuống / Tìm kiếm) & Giá vé:**")
+        st.markdown("**1. Chọn phương tiện (Gõ tìm kiếm & gợi ý trực tiếp) & Giá vé:**")
         col_m1, col_m2, col_m3, col_m4 = st.columns(4)
         cols = [col_m1, col_m2, col_m3, col_m4]
         
@@ -527,28 +520,44 @@ for g in st.session_state.groups:
             if cfg_key not in st.session_state.custom_configs: st.session_state.custom_configs[cfg_key] = {"cost": default_cost, "duration": default_dur}
                 
             with cols[idx_m]:
-                current_val = st.session_state.mode_names_state[state_name_key]
-                if current_val not in st.session_state.vehicle_library:
-                    st.session_state.vehicle_library.append(current_val)
+                st.markdown(f"**Lựa chọn {idx_m+1}**")
+                
+                # Ô tìm kiếm trực tiếp
+                search_query = st.text_input(
+                    f"🔍 Tìm xe {idx_m+1}:",
+                    placeholder="Gõ tìm: 29, 45, bay, phà...",
+                    key=f"search_{g_key}_{m_key}"
+                )
+                
+                # Lọc danh sách theo từ khóa tìm kiếm
+                if search_query:
+                    filtered_list = [v for v in st.session_state.vehicle_library if search_query.lower() in v.lower()]
+                    if not filtered_list:
+                        filtered_list = [search_query] # Nếu chưa có, cho phép nhập mới ngay
+                else:
+                    filtered_list = st.session_state.vehicle_library
+                
+                current_selected = st.session_state.mode_names_state[state_name_key]
+                if current_selected not in filtered_list:
+                    filtered_list = [current_selected] + filtered_list
                     
                 selected_veh = st.selectbox(
-                    f"Phương tiện {idx_m+1}:",
-                    st.session_state.vehicle_library,
-                    index=st.session_state.vehicle_library.index(current_val),
+                    f"Chọn phương tiện {idx_m+1}:",
+                    filtered_list,
+                    index=filtered_list.index(current_selected),
                     key=f"select_veh_{g_key}_{m_key}"
                 )
                 st.session_state.mode_names_state[state_name_key] = selected_veh
                 
-                # Phân loại mã chuyến đi theo yêu cầu
+                # Phân loại mã chuyến đi
                 req_type = check_mode_requires_code(selected_veh)
                 if req_type == "flight":
-                    new_flight_code = st.text_input("Mã chuyến bay:", value=st.session_state.flight_codes[state_flight_key], placeholder="VN123 / VJ456", key=f"input_flight_{g_key}_{m_key}")
+                    new_flight_code = st.text_input("Mã chuyến bay (bắt buộc):", value=st.session_state.flight_codes[state_flight_key], placeholder="VN123 / VJ456", key=f"input_flight_{g_key}_{m_key}")
                     st.session_state.flight_codes[state_flight_key] = new_flight_code
                 elif req_type == "trip":
-                    new_flight_code = st.text_input("Mã chuyến đi:", value=st.session_state.flight_codes[state_flight_key], placeholder="SE1 / Tàu 01 / Tuyến 03...", key=f"input_flight_{g_key}_{m_key}")
+                    new_flight_code = st.text_input("Mã chuyến đi (bắt buộc):", value=st.session_state.flight_codes[state_flight_key], placeholder="SE1 / Tàu 01 / Tuyến 03...", key=f"input_flight_{g_key}_{m_key}")
                     st.session_state.flight_codes[state_flight_key] = new_flight_code
                 else:
-                    # Phương tiện đường bộ không cần mã chuyến đi
                     st.caption("ℹ️ Phương tiện không cần mã chuyến")
                     st.session_state.flight_codes[state_flight_key] = ""
                     
