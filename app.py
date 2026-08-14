@@ -23,11 +23,10 @@ st.set_page_config(
 )
 
 # -----------------------------------------------------------------------------
-# CSS TÙY CHỈNH BIỂU TƯỢNG VÀ MENU THẢ XUỐNG (THÙNG RÁC NHỎ, MỜ XÁM BÊN PHẢI)
+# CSS TÙY CHỈNH MENU THẢ XUỐNG
 # -----------------------------------------------------------------------------
 st.markdown("""
 <style>
-/* Tùy chỉnh danh sách lựa chọn phương tiện */
 div[data-baseweb="select"] span {
     font-size: 14.5px;
 }
@@ -483,7 +482,7 @@ st.title("🗺️ Phương án di chuyển")
 st.caption("Tự động đề xuất phương tiện & chọn phương tiện từ danh sách thả xuống, lưu dữ liệu và xuất báo cáo Word / PDF.")
 
 # -----------------------------------------------------------------------------
-# 3. BẢNG GIÁ VỚI BIỂU TƯỢNG THÙNG RÁC MỜ XÁM BÊN PHẢI
+# 3. BẢNG GIÁ
 # -----------------------------------------------------------------------------
 st.subheader("📝 Bảng giá")
 st.caption("🔍 Bạn có thể gõ tìm kiếm xe trực tiếp trong ô thả xuống. Ở cuối danh sách có mục xóa bớt hoặc thêm mới phương tiện:")
@@ -542,15 +541,17 @@ for g in st.session_state.groups:
                 dropdown_options = raw_veh_list + [ACTION_DEL, ACTION_ADD]
                 cur_index = raw_veh_list.index(cur_val) if cur_val in raw_veh_list else 0
                 
-                # Định dạng tên phương tiện: Canh chữ sang trái, biểu tượng thùng rác nhỏ mờ sang sát mép phải
+                # Hàm căn chỉnh: Dùng khoảng trắng cố định \u3000 để đẩy icon thùng rác ra ngoài cùng bên phải
                 def format_display_veh(v):
                     if v == ACTION_DEL:
                         return "🗑️ [Xóa bớt phương tiện...]"
                     if v == ACTION_ADD:
                         return "➕ [Thêm phương tiện mới...]"
-                    # Dùng khoảng đệm để đẩy icon mờ 🗑 sang ngoài cùng bên phải
-                    padding = " " * max(2, (26 - len(v) * 2))
-                    return f"{v}{padding} 🗑"
+                    
+                    # Đệm khoảng cách rộng để đẩy biểu tượng ra mép phải
+                    pad_count = max(1, 14 - len(v))
+                    spacing = "\u3000" * pad_count
+                    return f"{v}{spacing}🗑"
 
                 chosen_selection = st.selectbox(
                     f"Phương tiện {idx_m+1}:",
@@ -763,3 +764,4 @@ else:
         col_c.metric("👥 Chi phí TB/người", f"{int(cost_c / sum(g['people'] for g in st.session_state.groups)):,} VNĐ")
         st.markdown("---")
         display_plan(res_cost, "Tối ưu chi phí", cost_c, dur_c)
+        
