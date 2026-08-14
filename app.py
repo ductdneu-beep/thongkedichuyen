@@ -23,6 +23,23 @@ st.set_page_config(
 )
 
 # -----------------------------------------------------------------------------
+# CSS TÙY CHỈNH BIỂU TƯỢNG VÀ MENU THẢ XUỐNG (THÙNG RÁC NHỎ, MỜ XÁM BÊN PHẢI)
+# -----------------------------------------------------------------------------
+st.markdown("""
+<style>
+/* Tùy chỉnh danh sách lựa chọn phương tiện */
+div[data-baseweb="select"] span {
+    font-size: 14.5px;
+}
+div[data-baseweb="popover"] ul li {
+    font-size: 14px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# -----------------------------------------------------------------------------
 # CẤU HÌNH FONT UNICODE CHO PDF (KHÔNG LỖI Ô VUÔNG)
 # -----------------------------------------------------------------------------
 @st.cache_resource
@@ -463,13 +480,13 @@ with st.sidebar:
         except Exception as e: st.error(f"Lỗi: {e}")
 
 st.title("🗺️ Phương án di chuyển")
-st.caption("Tự động đề xuất phương tiện & tích hợp chọn phương tiện kèm biểu tượng xóa/thêm mới, lưu dữ liệu và xuất báo cáo Word / PDF.")
+st.caption("Tự động đề xuất phương tiện & chọn phương tiện từ danh sách thả xuống, lưu dữ liệu và xuất báo cáo Word / PDF.")
 
 # -----------------------------------------------------------------------------
-# 3. BẢNG GIÁ VỚI MENU CHỌN PHƯƠNG TIỆN CÓ GỢI Ý & TÙY CHỈNH
+# 3. BẢNG GIÁ VỚI BIỂU TƯỢNG THÙNG RÁC MỜ XÁM BÊN PHẢI
 # -----------------------------------------------------------------------------
 st.subheader("📝 Bảng giá")
-st.caption("🔍 Bạn có thể gõ tìm kiếm trực tiếp trong ô thả xuống. Ở cuối danh sách có mục xóa bớt hoặc thêm mới phương tiện:")
+st.caption("🔍 Bạn có thể gõ tìm kiếm xe trực tiếp trong ô thả xuống. Ở cuối danh sách có mục xóa bớt hoặc thêm mới phương tiện:")
 
 default_keys = ["m1", "m2", "m3", "m4"]
 
@@ -519,20 +536,21 @@ for g in st.session_state.groups:
                     st.session_state.vehicle_dict[cur_val] = "none"
                     raw_veh_list.append(cur_val)
                 
-                ACTION_DEL = "🗑️ [Xóa bớt phương tiện khỏi danh sách...]"
+                ACTION_DEL = "🗑️ [Xóa bớt phương tiện khỏi danh mục...]"
                 ACTION_ADD = "➕ [Bổ sung phương tiện mới...]"
                 
-                # Menu chọn: Hiện tên phương tiện (kèm icon thùng rác mờ nhỏ) + 2 mục hành động ở cuối
                 dropdown_options = raw_veh_list + [ACTION_DEL, ACTION_ADD]
                 cur_index = raw_veh_list.index(cur_val) if cur_val in raw_veh_list else 0
                 
+                # Định dạng tên phương tiện: Canh chữ sang trái, biểu tượng thùng rác nhỏ mờ sang sát mép phải
                 def format_display_veh(v):
                     if v == ACTION_DEL:
                         return "🗑️ [Xóa bớt phương tiện...]"
                     if v == ACTION_ADD:
                         return "➕ [Thêm phương tiện mới...]"
-                    # Hiển thị icon thùng rác nhỏ mờ cạnh mỗi phương tiện
-                    return f"{v}   🗑"
+                    # Dùng khoảng đệm để đẩy icon mờ 🗑 sang ngoài cùng bên phải
+                    padding = " " * max(2, (26 - len(v) * 2))
+                    return f"{v}{padding} 🗑"
 
                 chosen_selection = st.selectbox(
                     f"Phương tiện {idx_m+1}:",
