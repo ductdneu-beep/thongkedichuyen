@@ -676,7 +676,6 @@ def display_plan(results, plan_title, total_cost, max_dur):
     
     st.markdown("#### 📊 Bảng tổng hợp:")
     st.dataframe(pd.DataFrame(summary_data), use_container_width=True)
-    col_w, col_p = st.columns(2)
 col_w, col_p = st.columns(2)
     with col_w:
         docx_file = generate_docx(results, plan_title, destination, total_cost, max_dur)
