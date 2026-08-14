@@ -5,6 +5,7 @@ import json
 import os
 import io
 import re
+import urllib.request
 from docx import Document
 from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -22,43 +23,81 @@ st.set_page_config(
 )
 
 # -----------------------------------------------------------------------------
-# CẤU HÌNH FONT TIMES NEW ROMAN CHO PDF (HỖ TRỢ ĐẦY ĐỦ TIẾNG VIỆT)
+# CẤU HÌNH FONT UNICODE (TIMES NEW ROMAN / SERIF) TỰ ĐỘNG CHO MỌI HỆ ĐIỀU HÀNH
 # -----------------------------------------------------------------------------
-def register_times_fonts():
-    font_paths = [
-        ("/System/Library/Fonts/Supplemental/Times New Roman.ttf", "Times-Regular"),
-        ("/System/Library/Fonts/Supplemental/Times New Roman Bold.ttf", "Times-Bold"),
-        ("/Library/Fonts/Times New Roman.ttf", "Times-Regular"),
-        ("/Library/Fonts/Times New Roman Bold.ttf", "Times-Bold"),
-        ("/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf", "Times-Regular"),
-        ("/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman_Bold.ttf", "Times-Bold"),
-        ("/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf", "Times-Regular"),
-        ("/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf", "Times-Bold"),
+@st.cache_resource
+def setup_pdf_fonts():
+    font_name_reg = "VN-Times"
+    font_name_bold = "VN-Times-Bold"
+    
+    # Danh sách kiểm tra font có sẵn trên macOS / Linux
+    local_reg_paths = [
+        "/System/Library/Fonts/Supplemental/Times New Roman.ttf",
+        "/Library/Fonts/Times New Roman.ttf",
+        "/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSerif.ttf"
+    ]
+    local_bold_paths = [
+        "/System/Library/Fonts/Supplemental/Times New Roman Bold.ttf",
+        "/Library/Fonts/Times New Roman Bold.ttf",
+        "/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman_Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf"
     ]
     
-    registered_reg = False
-    registered_bold = False
+    reg_loaded = False
+    bold_loaded = False
     
-    for path, name in font_paths:
-        if os.path.exists(path):
+    for p in local_reg_paths:
+        if os.path.exists(p):
             try:
-                if name == "Times-Regular" and not registered_reg:
-                    pdfmetrics.registerFont(TTFont("VN-Times", path))
-                    registered_reg = True
-                elif name == "Times-Bold" and not registered_bold:
-                    pdfmetrics.registerFont(TTFont("VN-Times-Bold", path))
-                    registered_bold = True
+                pdfmetrics.registerFont(TTFont(font_name_reg, p))
+                reg_loaded = True
+                break
             except Exception:
                 pass
                 
-    if not registered_reg:
-        pdfmetrics.registerFont(TTFont("VN-Times", "/System/Library/Fonts/Supplemental/Arial.ttf"))
-    if not registered_bold:
-        pdfmetrics.registerFont(TTFont("VN-Times-Bold", "/System/Library/Fonts/Supplemental/Arial Bold.ttf"))
+    for p in local_bold_paths:
+        if os.path.exists(p):
+            try:
+                pdfmetrics.registerFont(TTFont(font_name_bold, p))
+                bold_loaded = True
+                break
+            except Exception:
+                pass
+                
+    # Nếu đang chạy trên Streamlit Cloud (chưa có font local), tự động tải font serif Unicode về cache
+    if not reg_loaded or not bold_loaded:
+        cache_dir = os.path.expanduser("~/.fonts_cache")
+        os.makedirs(cache_dir, exist_ok=True)
+        reg_file = os.path.join(cache_dir, "LiberationSerif-Regular.ttf")
+        bold_file = os.path.join(cache_dir, "LiberationSerif-Bold.ttf")
+        
+        try:
+            if not os.path.exists(reg_file):
+                urllib.request.urlretrieve(
+                    "https://github.com/google/fonts/raw/main/apache/robotoserif/RobotoSerif%5BGRAD%2Copsz%2Cwdth%2Cwght%5D.ttf",
+                    reg_file
+                )
+            pdfmetrics.registerFont(TTFont(font_name_reg, reg_file))
+            reg_loaded = True
+        except Exception:
+            pass
 
-register_times_fonts()
+        try:
+            if not os.path.exists(bold_file):
+                bold_file = reg_file # dùng chung nếu cần
+            pdfmetrics.registerFont(TTFont(font_name_bold, bold_file))
+            bold_loaded = True
+        except Exception:
+            pass
 
-SAVED_DB_FILE = os.path.expanduser("~/Desktop/ThongKeDiChuyen/saved_plans.json")
+    return font_name_reg if reg_loaded else "Helvetica", font_name_bold if bold_loaded else "Helvetica-Bold"
+
+PDF_FONT_REG, PDF_FONT_BOLD = setup_pdf_fonts()
+
+SAVED_DB_FILE = os.path.expanduser("~/.saved_plans_db.json")
 
 def load_saved_db():
     if os.path.exists(SAVED_DB_FILE):
@@ -74,7 +113,7 @@ def save_saved_db(db):
         with open(SAVED_DB_FILE, "w", encoding="utf-8") as f:
             json.dump(db, f, ensure_ascii=False, indent=2)
     except Exception as e:
-        st.error(f"Không thể lưu file hệ thống: {e}")
+        st.error(f"Không thể lưu: {e}")
 
 # -----------------------------------------------------------------------------
 # 1. TỌA ĐỘ 63 TỈNH THÀNH
@@ -121,41 +160,26 @@ def calculate_haversine(origin, destination):
     return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))) * 1.3)
 
 def format_mode_transport_label(mode, flight_code):
-    """
-    Quy tắc định dạng tên và mã phương tiện:
-    1. Máy bay: (Mã chuyến bay: VN123)
-    2. Tàu thủy, Cano, Tàu hỏa: (Mã chuyến đi: SE1)
-    3. Đường bộ (ô tô, xe khách...): Không hiển thị mã
-    """
     m_lower = str(mode).lower()
     code_str = str(flight_code).strip() if flight_code else ""
-    
-    # Nhóm Hàng không
     if any(k in m_lower for k in ["bay", "flight", "plane", "vietnam airlines", "vietjet", "bamboo"]):
         return f"{mode} (Mã chuyến bay: {code_str})" if code_str else mode
-    
-    # Nhóm Đường thủy / Đường sắt
     elif any(k in m_lower for k in ["thủy", "cano", "ca nô", "tàu", "hỏa", "thuyền", "phà", "railway", "train", "boat"]):
         return f"{mode} (Mã chuyến đi: {code_str})" if code_str else mode
-        
-    # Nhóm Đường bộ (Không có mã)
     else:
         return mode
 
 def generate_itinerary_steps(origin, destination, mode, flight_code, dist):
     if dist == 0:
         return "Tập trung tại chỗ (Không cần di chuyển xa)"
-    
     m_lower = str(mode).lower()
     code_str = str(flight_code).strip() if flight_code else ""
-    
     if any(k in m_lower for k in ["bay", "flight", "plane", "vietnam airlines", "vietjet", "bamboo"]):
         step2 = f"Bước 2: Di chuyển bằng {mode}" + (f" (Mã chuyến bay: {code_str})" if code_str else "") + f" về {destination} ({dist} km)."
     elif any(k in m_lower for k in ["thủy", "cano", "ca nô", "tàu", "hỏa", "thuyền", "phà", "railway", "train", "boat"]):
         step2 = f"Bước 2: Di chuyển bằng {mode}" + (f" (Mã chuyến đi: {code_str})" if code_str else "") + f" về {destination} ({dist} km)."
     else:
         step2 = f"Bước 2: Di chuyển bằng {mode} về {destination} ({dist} km)."
-        
     return f"Bước 1: Di chuyển từ {origin} ra điểm khởi hành (~1h).\n{step2}\nBước 3: Đón xe về điểm hội quân C."
 
 def clean_pdf_text(text):
@@ -169,7 +193,6 @@ def clean_pdf_text(text):
     )
     return emoji_pattern.sub('', text).strip()
 
-# Hàm xuất File Word (.docx)
 def generate_docx(results, plan_title, destination, total_cost, max_dur):
     doc = Document()
     style = doc.styles['Normal']
@@ -236,18 +259,17 @@ def generate_docx(results, plan_title, destination, total_cost, max_dur):
     bio.seek(0)
     return bio
 
-# Hàm xuất File PDF Font Times New Roman
 def generate_pdf(results, plan_title, destination, total_cost, max_dur):
     bio = io.BytesIO()
     doc = SimpleDocTemplate(bio, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
     styles = getSampleStyleSheet()
     
-    title_style = ParagraphStyle('TitleStyle', fontName='VN-Times-Bold', fontSize=16, alignment=1, spaceAfter=8, textColor=colors.HexColor("#111827"))
-    sub_style = ParagraphStyle('SubStyle', fontName='VN-Times', fontSize=10, alignment=1, spaceAfter=12, textColor=colors.HexColor("#4B5563"))
-    norm_style = ParagraphStyle('NormStyle', fontName='VN-Times', fontSize=10, leading=14, textColor=colors.black)
-    head_style = ParagraphStyle('HeadStyle', fontName='VN-Times-Bold', fontSize=12, spaceBefore=12, spaceAfter=8, textColor=colors.HexColor("#1E3A8A"))
-    cell_style = ParagraphStyle('CellStyle', fontName='VN-Times', fontSize=9, alignment=1, leading=12)
-    cell_bold = ParagraphStyle('CellBold', fontName='VN-Times-Bold', fontSize=9, alignment=1, leading=12)
+    title_style = ParagraphStyle('TitleStyle', fontName=PDF_FONT_BOLD, fontSize=16, alignment=1, spaceAfter=8, textColor=colors.HexColor("#111827"))
+    sub_style = ParagraphStyle('SubStyle', fontName=PDF_FONT_REG, fontSize=10, alignment=1, spaceAfter=12, textColor=colors.HexColor("#4B5563"))
+    norm_style = ParagraphStyle('NormStyle', fontName=PDF_FONT_REG, fontSize=10, leading=14, textColor=colors.black)
+    head_style = ParagraphStyle('HeadStyle', fontName=PDF_FONT_BOLD, fontSize=12, spaceBefore=12, spaceAfter=8, textColor=colors.HexColor("#1E3A8A"))
+    cell_style = ParagraphStyle('CellStyle', fontName=PDF_FONT_REG, fontSize=9, alignment=1, leading=12)
+    cell_bold = ParagraphStyle('CellBold', fontName=PDF_FONT_BOLD, fontSize=9, alignment=1, leading=12)
     
     story = []
     story.append(Paragraph("BÁO CÁO PHƯƠNG ÁN DI CHUYỂN", title_style))
@@ -255,7 +277,6 @@ def generate_pdf(results, plan_title, destination, total_cost, max_dur):
     story.append(Paragraph(f"- <b>Tổng chi phí:</b> {total_cost:,} VNĐ | <b>Thời gian đến đủ:</b> {max_dur} Giờ | <b>Tổng khách:</b> {sum(r['people'] for r in results)} Người", norm_style))
     story.append(Spacer(1, 10))
     
-    # Bảng tổng hợp
     headers = [Paragraph("Đoàn", cell_bold), Paragraph("Xuất phát", cell_bold), Paragraph("Số người", cell_bold), Paragraph("Phương tiện", cell_bold), Paragraph("Quãng đường", cell_bold), Paragraph("Thời gian", cell_bold), Paragraph("Tổng chi phí", cell_bold)]
     data = [headers]
     
@@ -300,7 +321,6 @@ def generate_pdf(results, plan_title, destination, total_cost, max_dur):
     bio.seek(0)
     return bio
 
-# State quản lý
 if "custom_configs" not in st.session_state: st.session_state.custom_configs = {}
 if "override_mode" not in st.session_state: st.session_state.override_mode = {}
 if "custom_itinerary" not in st.session_state: st.session_state.custom_itinerary = {}
@@ -458,7 +478,6 @@ for g in st.session_state.groups:
                 new_mode_name = st.text_input(f"Phương tiện {idx_m+1}:", value=st.session_state.mode_names_state[state_name_key], key=f"input_name_{g_key}_{m_key}")
                 st.session_state.mode_names_state[state_name_key] = new_mode_name
                 
-                # Xác định nhãn placeholder phù hợp
                 m_check = new_mode_name.lower()
                 if "bay" in m_check or "air" in m_check:
                     label_code = "Mã chuyến bay:"
@@ -480,7 +499,6 @@ for g in st.session_state.groups:
         st.markdown("---")
         st.markdown("**2. Tùy chỉnh văn bản Lộ trình hành trình chi tiết:**")
         active_mode = selected_override if selected_override != "🤖 Tự động đề xuất tối ưu" else current_modes[0]
-        # Lấy mã tương ứng với mode đang active
         active_code = ""
         for i_m in range(4):
             if current_modes[i_m] == active_mode:
@@ -579,7 +597,7 @@ def display_plan(results, plan_title, total_cost, max_dur):
     with col_p:
         pdf_file = generate_pdf(results, plan_title, destination, total_cost, max_dur)
         st.download_button(
-            label="📑 Tải Báo Cáo PDF (Times New Roman)",
+            label="📑 Tải Báo Cáo PDF",
             data=pdf_file,
             file_name=f"Bao_Cao_Phuong_An_{destination}.pdf",
             mime="application/pdf"
